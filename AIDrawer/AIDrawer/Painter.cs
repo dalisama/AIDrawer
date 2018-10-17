@@ -75,7 +75,7 @@ namespace AIPainter
 
                 if (generation % 100 == 0)
                 {
-                    copyImage.Save(@"c:\monalisa\" + generation + "bmp", System.Drawing.Imaging.ImageFormat.Bmp);
+                    copyImage.Save(@"c:\monalisa\" + generation + ".bmp", System.Drawing.Imaging.ImageFormat.Bmp);
 
                 }
 
