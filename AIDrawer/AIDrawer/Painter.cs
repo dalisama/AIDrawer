@@ -1,8 +1,10 @@
 ﻿using AIDrawer;
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace AIPainter
@@ -29,7 +31,7 @@ namespace AIPainter
 
                         Image image = Image.FromStream(bmpStream);
 
-                        _image = new Bitmap(image, image.Width / 2, image.Height / 2);
+                        _image = new Bitmap(image, image.Width / 10, image.Height / 10);
                         for (int i = 0; i < _image.Width; i++)
                         {
                             for (int j = 0; j < _image.Height; j++)
@@ -40,7 +42,9 @@ namespace AIPainter
                                 _image.SetPixel(i, j, newColor);
                             }
                         }
+                        _image.Save(@"c:\monalisa\monalisa.bmp");
                         pictureBox1.Image = _image;
+                 
                     }
                 }
             }
@@ -48,45 +52,42 @@ namespace AIPainter
             pictureBox1.Image = copyImage;
         }
 
-        private void AIPaint(object sender, EventArgs e)
+        private void WhereTheMagicHappen()
         {
 
-            var geneticAlgo = new GeneticAlgo(500, _image, 0.1);
-            geneticAlgo.GenerateFirstPopulation();
-            var generation = 0;
-            var BestScore = 0.0;
+            var gAlg = new GeneticAlgo(20000, _image.ConvertToMatrix(), 1, 20, 1, 30);
+            gAlg.GenerateFirstPopulation();
+            var time = new Stopwatch();
+            time.Start();
             while (true)
             {
-                geneticAlgo.CalculateFitness();
-                var score = geneticAlgo.Fitness.Max();
-                if (score > BestScore)
-                {
-                    BestScore = score;
-                }
-                maxScoreLbl.Text = "Best score: " + BestScore;
+                gAlg.CalculateFitness();
+                gAlg.GetTheBestPopulation();
+                var score = gAlg.Fitness.Max();
+
                 ScoreLbl.Text = "Score: " + score;
-                generationLbl.Text = "Generation: " + generation;
+                generationLbl.Text = "Generation: " + gAlg.Generation;
+                completionRateLbl.Text = "Completion: " + gAlg.CompletionRate.ToString("0.00") + "%";
+                timeLbl.Text = time.Elapsed.ToString(@"d\.hh\:mm\:ss");
 
-
-
-                var indexScore = Array.IndexOf(geneticAlgo.Fitness, score);
-                var tmpImage = geneticAlgo.Population[indexScore];
-                var copyImage = tmpImage.Clone(new Rectangle(0, 0, tmpImage.Width, tmpImage.Height), tmpImage.PixelFormat);
-
-                if (generation % 100 == 0)
-                {
-                    copyImage.Save(@"c:\monalisa\" + generation + ".bmp", System.Drawing.Imaging.ImageFormat.Bmp);
-
-                }
-
-                pictureBox2.Image = copyImage;
-
+                var indexScore = Array.IndexOf(gAlg.Fitness, score);
+                var tmpImage = gAlg.Population[indexScore];
+                if (pictureBox2.Image != null) pictureBox2.Image.Dispose();
+                pictureBox2.Image = tmpImage.ConvertToBitmap();
                 this.Refresh();
-                geneticAlgo.GenerateNewPopulation();
-                generation++;
+                gAlg.GenerateNewPopulation();
+                gAlg.Generation++;
+
 
 
             }
         }
+        private void AIPaint(object sender, EventArgs e)
+        {
+            WhereTheMagicHappen();
+        
+        }
+
+
     }
 }

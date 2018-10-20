@@ -1,57 +1,72 @@
-﻿using System.Drawing;
+﻿using csMatrix;
+using System;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace AIDrawer
 {
     public class GeneticAlgo
     {
-        public Bitmap[] Population;
+        public Matrix[] Population;
         public int PopulationSize;
         public double[] Fitness;
-        public Bitmap ImageToMimic;
-        public double MutationRate;
-        private int ImageToMimicWidth;
-        private int ImageToMimicHeight;
+        public Matrix ImageToMimic;
+        public double CompletionRate;
+        public Matrix BestMimic;
+        public int Generation;
 
-        public GeneticAlgo(int populationSize, Bitmap imageToMimic, double mutationRate)
+        private double _mutationRate;
+        private int _imageToMimicWidth;
+        private int _imageToMimicHeight;
+        private int _tolerance;
+        private int _theBestParentRate;
+        private int _theBestParentSize;
+        private Matrix[] _theBestParentPopulation;
+        private int _newBloodSize;
+        private int _newBloodRate;
+
+        public GeneticAlgo(int populationSize, Matrix imageToMimic, double mutationRate, int tolerance, int theBestParentRate, int newBloodRate)
         {
-
+            Generation = 0;
+            _tolerance = tolerance;
             PopulationSize = populationSize;
-            Population = new Bitmap[populationSize];
+            Population = new Matrix[populationSize];
             Fitness = new double[populationSize];
             ImageToMimic = imageToMimic;
-            MutationRate = mutationRate;
-            ImageToMimicWidth = ImageToMimic.Width;
-            ImageToMimicHeight = ImageToMimic.Height;
+            _mutationRate = mutationRate;
+            _imageToMimicHeight = imageToMimic.Rows;
+            _imageToMimicWidth = imageToMimic.Columns;
+            _theBestParentRate = theBestParentRate;
+            _theBestParentSize = populationSize * _theBestParentRate / 100;
+            _newBloodRate = newBloodRate;
+            _newBloodSize = populationSize * _newBloodRate / 100;
+            _theBestParentPopulation = new Matrix[_theBestParentSize];
+            CompletionRate = 0;
 
         }
 
-        private Bitmap GenerateRandomBitMap()
-        {
-            Bitmap image = new Bitmap(ImageToMimicWidth, ImageToMimicHeight);
-            for (int i = 0; i < ImageToMimicHeight; i++)
-            {
-                for (int j = 0; j < ImageToMimicWidth; j++)
-                {
-                    var grey = ParallelRandom.Next(256);
-                    image.SetPixel(j, i, Color.FromArgb(grey, grey, grey));
 
-                }
-            }
-            return image;
 
-        }
 
         public void GenerateFirstPopulation()
         {
             for (int i = 0; i < PopulationSize; i++)
             {
-                Population[i] = GenerateRandomBitMap();
+                Population[i] = GenerateRandomMatrix();
             }
 
 
         }
-
+        public Matrix GenerateRandomMatrix()
+        {
+            var tmp = new double[_imageToMimicHeight * _imageToMimicWidth];
+            for (int j = 0; j < tmp.Length; j++)
+            {
+                tmp[j] = ParallelRandom.Next(256);
+            }
+            return new Matrix(_imageToMimicHeight, _imageToMimicWidth, tmp);
+        }
         private int NaturalSelection()
         {
             var accept = false;
@@ -71,40 +86,27 @@ namespace AIDrawer
             return rd;
         }
 
-        private void Mutation(Bitmap image)
-        {
-            for (int i = 0; i < ImageToMimicHeight; i++)
-            {
-                for (int j = 0; j < ImageToMimicWidth; j++)
-                {
-                    if (ParallelRandom.Next(100) < MutationRate)
-                        image.SetPixel(j, i, Color.FromArgb(ParallelRandom.Next(256), ParallelRandom.Next(256), ParallelRandom.Next(256), ParallelRandom.Next(256)));
 
-                }
-            }
-        }
-
-        private Bitmap Crossover()
+        private Matrix Crossover()
         {
             var indexFather = NaturalSelection();
             var indexMother = NaturalSelection();
-            var child = new Bitmap(ImageToMimicWidth, ImageToMimicHeight);
-            for (int i = 0; i < ImageToMimicHeight; i++)
+            var child = new Matrix(_imageToMimicHeight, _imageToMimicWidth, Population[indexFather].Data);
+            for (int i = 0; i < _imageToMimicHeight; i++)
             {
-                for (int j = 0; j < ImageToMimicWidth; j++)
+                for (int j = 0; j < _imageToMimicWidth; j++)
                 {
-                    if (ParallelRandom.Next((int)Fitness[indexFather] + (int)Fitness[indexMother]) < (int)Fitness[indexFather])
+                    if (ParallelRandom.Next((int)Fitness[indexFather] + (int)Fitness[indexMother]) < (int)Fitness[indexMother])
                     {
-                        child.SetPixel(j, i, Population[indexFather].GetPixel(j, i));
-                    }
-                    else
-                    {
-
-                        child.SetPixel(j, i, Population[indexMother].GetPixel(j, i));
+                        child[i, j] = Population[indexMother][i, j];
                     }
 
-                    if (ParallelRandom.Next(100) < MutationRate)
-                        child.SetPixel(j, i, Color.FromArgb(ParallelRandom.Next(256), ParallelRandom.Next(256), ParallelRandom.Next(256), ParallelRandom.Next(256)));
+                    if (ParallelRandom.Next(100) < _mutationRate)
+                    {
+                        child[i, j] = ParallelRandom.Next(256);
+
+                    }
+
 
 
                 }
@@ -118,34 +120,74 @@ namespace AIDrawer
             {
 
                 var score = 0;
-                for (int i = 0; i < ImageToMimicHeight; i++)
+                var completed = 0;
+                for (int i = 0; i < ImageToMimic.Data.Length; i++)
                 {
-                    for (int j = 0; j < ImageToMimicWidth; j++)
+                    var tmp = Population[index];
+                    if (tmp.Data[i] == ImageToMimic.Data[i])
                     {
-                        if (ImageToMimic.GetPixel(j, i).R == Population[index].GetPixel(j, i).R)
-                        {
-
-                            score++;
-                        }
-
+                        score = score + 500;
+                        completed++;
+                    }
+                    if (Math.Abs(tmp.Data[i] - ImageToMimic.Data[i]) < _tolerance)
+                    {
+                        score = score + _tolerance - (int)Math.Abs(tmp.Data[i] - ImageToMimic.Data[i]);
                     }
                 }
-                Fitness[index] = score * 100;
+                var rate = (double)(completed * 100) / (double)ImageToMimic.Data.Length;
+                if (rate > CompletionRate)
+                {
+                    CompletionRate = rate;
+                    BestMimic = new Matrix(Population[index]);
+                    var tmpBitmap = BestMimic.ConvertToBitmap();
+                    var fileName = @"c:\monalisa\" + Generation + ".bmp";
+                    if (File.Exists(fileName)) File.Delete(fileName);
+                    tmpBitmap.Save(fileName);
+                    tmpBitmap.Dispose();
+                }
+                Fitness[index] = score;
             };
         }
 
         public void GenerateNewPopulation()
         {
-            var tmpPopulation = new Bitmap[PopulationSize];
-            for (int i = 0; i < PopulationSize; i++)
+            var tmpPopulation = new Matrix[PopulationSize];
+            Parallel.For(0, PopulationSize, i =>
             {
-                tmpPopulation[i] = Crossover();
-            }
+                if (i < _theBestParentSize)
+                {
+                    tmpPopulation[i] = _theBestParentPopulation[i];
+                }
+                else if (i < _newBloodSize + _theBestParentSize)
+                {
+                    tmpPopulation[i] = GenerateRandomMatrix();
+                }
+                else
+                {
+                    tmpPopulation[i] = Crossover();
+                }
+
+            });
+
+
             for (int i = 0; i < PopulationSize; i++)
             {
                 Population[i] = tmpPopulation[i];
             }
         }
+
+
+        public void GetTheBestPopulation()
+        {
+            var bestScore = Fitness.OrderBy(x => x).Reverse().Take(_theBestParentSize).ToArray();
+            for (int i = 0; i < _theBestParentSize; i++)
+            {
+                var index = Array.IndexOf(Fitness, bestScore[i]);
+                _theBestParentPopulation[i] = new Matrix(Population[index]);
+            }
+        }
+
+
     }
 }
 
