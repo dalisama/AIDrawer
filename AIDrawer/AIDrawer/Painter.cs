@@ -55,7 +55,7 @@ namespace AIPainter
         private void WhereTheMagicHappen()
         {
 
-            var gAlg = new GeneticAlgo(20000, _image.ConvertToMatrix(), 1, 20, 1, 30);
+            var gAlg = new GeneticAlgo(10000, _image.ConvertToMatrix(), 1, 20, 1, 30);
             gAlg.GenerateFirstPopulation();
             var time = new Stopwatch();
             time.Start();

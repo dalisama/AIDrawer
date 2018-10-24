@@ -43,6 +43,7 @@ namespace AIDrawer
             _newBloodSize = populationSize * _newBloodRate / 100;
             _theBestParentPopulation = new Matrix[_theBestParentSize];
             CompletionRate = 0;
+      
 
         }
 
@@ -111,6 +112,7 @@ namespace AIDrawer
 
                 }
             }
+            
             return child;
         }
 

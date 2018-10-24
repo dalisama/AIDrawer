@@ -130,7 +130,7 @@
             this.Controls.Add(this.PaintBtn);
             this.Controls.Add(this.pictureBox1);
             this.Name = "Painter";
-            this.Text = "Form1";
+            this.Text = "AI Painter";
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
             this.ResumeLayout(false);
